@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WARRIORS HABIT - Sistema Gamificado de Hábitos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Weekly/Monthly tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter & Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0e14',
+                        cardBg: '#131824',
+                        cardBorder: '#20293d',
+                        goldAccent: '#f59e0b',
+                        purpleAccent: '#8b5cf6',
+                        neonBlue: '#3b82f6',
+                        neonGreen: '#10b981',
+                        neonRed: '#ef4444',
+                        neonCyan: '#06b6d4',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Orbitron', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b0e14;
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .glow-gold {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+        }
+        .glow-purple {
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);
+        }
+        /* Task checkbox styling to match screenshot */
+        .task-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid #374151;
+            background-color: #0b0e14;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .task-checkbox:checked {
+            background-color: #10b981;
+            border-color: #34d399;
+        }
+        .task-checkbox:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: #0b0e14;
+            font-size: 12px;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0e14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #20293d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-24 md:pb-6 select-none">
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-darkBg/90 backdrop-blur-md border-b border-cardBorder px-4 py-3">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <!-- App Identity & Level -->
+            <div class="flex items-center gap-3">
+                <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-yellow-600 via-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20">
+                    <div class="w-full h-full bg-cardBg rounded-[10px] flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-amber-400 text-lg"></i>
+                    </div>
+                    <span id="headerGlobalLevel" class="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-yellow-300 font-display">
+                        Lv.1
+                    </span>
+                </div>
+                <div>
+                    <h1 class="font-display font-black tracking-wider text-sm md:text-base text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-purple-300 to-amber-200 uppercase">
+                        WARRIORS HABIT
+                    </h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
+                        <i class="fa-solid fa-fire text-amber-500 animate-pulse"></i>
+                        <span id="streakDaysCount">0</span> Días en racha
+                    </p>
+                </div>
+            </div>
+
+            <!-- Currency & Global Level Bar -->
+            <div class="flex items-center gap-3">
+                <!-- Coin Counter -->
+                <div class="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-full glow-gold">
+                    <i class="fa-solid fa-coins text-amber-400 text-sm"></i>
+                    <span id="headerCoins" class="font-display font-bold text-amber-300 text-sm">0</span>
+                </div>
+
+                <!-- Reset Day / Tools Button -->
+                <button onclick="openModal('resetConfirmModal')" class="p-2 text-slate-400 hover:text-red-400 transition-colors rounded-lg bg-cardBg border border-cardBorder hover:border-red-500/40" title="Reiniciar día o progreso">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-4xl mx-auto w-full px-4 pt-4 flex-grow">
+
+        <!-- TAB 1: PANEL / DASHBOARD -->
+        <section id="tab-panel" class="tab-content space-y-6">
+            <!-- Global Level Card -->
+            <div class="bg-gradient-to-br from-cardBg via-cardBg to-purple-950/20 border border-purple-500/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                    <i class="fa-solid fa-crown text-9xl text-purple-400"></i>
+                </div>
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="text-xs uppercase font-bold tracking-widest text-purple-400">Nivel Global de Guerrero</span>
+                        <h2 class="text-2xl md:text-3xl font-display font-extrabold text-white mt-0.5">
+                            Nivel <span id="panelGlobalLevel">1</span>
+                        </h2>
+                    </div>
+                    <span class="text-xs bg-purple-500/20 border border-purple-500/40 text-purple-300 px-3 py-1 rounded-full font-medium">
+                        <span id="panelTotalXP">0</span> XP Totales
+                    </span>
+                </div>
+
+                <!-- XP Progress Bar -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs text-slate-400 font-medium">
+                        <span>Progreso al siguiente nivel</span>
+                        <span id="panelGlobalProgressText">0 / 500 XP</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                        <div id="panelGlobalProgressBar" class="h-full bg-gradient-to-r from-amber-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WEEKLY & MONTHLY TRACKING CHARTS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Chart 1: Daily Activity (Last 7 Days) -->
+                <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-amber-400"></i> Cumplimiento Semanal (7 Días)
+                        </h3>
+                        <span class="text-[10px] text-slate-400" id="weeklyCompletionRate">0% Completado</span>
+                    </div>
+                    <div class="h-44 w-full relative">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Balance by Category (Radar/Bar) -->
+                <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-purple-400"></i> Balance por Categoría
+                        </h3>
+                        <span class="text-[10px] text-slate-400">Distribución XP</span>
+                    </div>
+                    <div class="h-44 w-full relative">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MONTHLY TRACKING CALENDAR -->
+            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-emerald-400"></i> Seguimiento Mensual
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeMonth(-1)" class="p-1.5 text-slate-400 hover:text-white bg-darkBg border border-cardBorder rounded-lg text-xs">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span id="calendarMonthLabel" class="text-xs font-bold text-slate-200 capitalize w-28 text-center">Mes 2026</span>
+                        <button onclick="changeMonth(1)" class="p-1.5 text-slate-400 hover:text-white bg-darkBg border border-cardBorder rounded-lg text-xs">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendar Week Header -->
+                <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 uppercase">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                </div>
+
+                <!-- Calendar Days Grid -->
+                <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1.5">
+                    <!-- Dynamic calendar cells -->
+                </div>
+
+                <div class="flex items-center justify-end gap-4 text-[10px] text-slate-400 pt-1">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 100% Completado</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500/60"></span> Parcial</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-darkBg border border-cardBorder"></span> Sin actividad</span>
+                </div>
+            </div>
+
+            <!-- Instructions Cards -->
+            <div>
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-compass text-amber-400"></i> Guía del Guerrero
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-cardBg border border-cardBorder p-4 rounded-xl flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200">Configura tus Misiones</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Asociadas a tus 6 Habilidades. Puedes personalizar el XP individual de cada tarea.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-cardBg border border-cardBorder p-4 rounded-xl flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200">Registra cada Día</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Marca tus misiones completadas día a día. Mantén tu Racha activa para fortalecer tu disciplina.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- TAB 2: MISIONES (TASKS GROUPED BY CATEGORY AS IN IMAGE) -->
+        <section id="tab-misiones" class="tab-content hidden space-y-5">
+            <!-- Header & Action Bar -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-cardBg p-4 rounded-2xl border border-cardBorder">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-amber-400"></i> Misiones por Categoría
+                    </h2>
+                    <p class="text-xs text-slate-400">Gana XP completando tus hábitos diarios agrupados por habilidad.</p>
+                </div>
+                <button onclick="openModal('addTaskModal')" class="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 text-xs flex items-center justify-center gap-2 transition-all">
+                    <i class="fa-solid fa-plus text-sm"></i> Nueva Misión
+                </button>
+            </div>
+
+            <!-- Grouped Task Cards Container -->
+            <div id="groupedTasksContainer" class="space-y-5">
+                <!-- Dynamic Category Group Cards matching screenshot -->
+            </div>
+        </section>
+
+
+        <!-- TAB 3: SKILLS -->
+        <section id="tab-skills" class="tab-content hidden space-y-5">
+            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl">
+                <h2 class="text-lg font-bold text-white mb-1">Árbol de Habilidades</h2>
+                <p class="text-xs text-slate-400">Progresión detallada por cada área clave de tu vida de guerrero.</p>
+            </div>
+
+            <div id="skillsDetailList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Skill Detail cards rendered dynamically -->
+            </div>
+        </section>
+
+
+        <!-- TAB 4: TIENDA (STORE) -->
+        <section id="tab-tienda" class="tab-content hidden space-y-5">
+            <div class="bg-gradient-to-r from-cardBg via-amber-950/20 to-cardBg p-5 rounded-2xl border border-amber-500/30 flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+                        <i class="fa-solid fa-store"></i> Tienda de Recompensas
+                    </h2>
+                    <p class="text-xs text-slate-400">Canjea tus monedas por premios reales sin culpa.</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 block">Saldo disponible</span>
+                    <span id="storeCoinsDisplay" class="text-xl font-display font-extrabold text-amber-400">0 Monedas</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="openModal('addRewardModal')" class="bg-cardBg border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 font-medium px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-plus"></i> Crear Recompensa
+                </button>
+            </div>
+
+            <div id="rewardsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Rewards loaded dynamically -->
+            </div>
+        </section>
+
+
+        <!-- TAB 5: GUÍA -->
+        <section id="tab-guia" class="tab-content hidden space-y-5">
+            <div class="bg-cardBg border border-cardBorder p-5 rounded-2xl space-y-4">
+                <h2 class="text-xl font-display font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-scroll"></i> Código del Guerrero
+                </h2>
+                
+                <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                    <div class="p-3 bg-darkBg/60 rounded-xl border border-cardBorder">
+                        <h3 class="font-bold text-purple-300 text-xs uppercase tracking-wider mb-1">1. La Racha es Sagrada</h3>
+                        <p class="text-xs text-slate-400">Completa al menos una misión diaria para mantener la llama encendida. La constancia supera la intensidad.</p>
+                    </div>
+
+                    <div class="p-3 bg-darkBg/60 rounded-xl border border-cardBorder">
+                        <h3 class="font-bold text-amber-300 text-xs uppercase tracking-wider mb-1">2. Ajuste de Experiencia</h3>
+                        <p class="text-xs text-slate-400">Puedes editar los puntos de XP de cada tarea haciendo clic en el icono de edición de la misión.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-cardBg/95 backdrop-blur-lg border-t border-cardBorder px-2 py-2">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            <button onclick="switchTab('panel')" id="nav-panel" class="nav-btn active flex flex-col items-center gap-1 p-2 rounded-xl text-amber-400 font-bold transition-all">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[10px]">Panel</span>
+            </button>
+            <button onclick="switchTab('misiones')" id="nav-misiones" class="nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 transition-all">
+                <i class="fa-solid fa-list-check text-lg"></i>
+                <span class="text-[10px]">Misiones</span>
+            </button>
+            <button onclick="switchTab('skills')" id="nav-skills" class="nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 transition-all">
+                <i class="fa-solid fa-bolt text-lg"></i>
+                <span class="text-[10px]">Skills</span>
+            </button>
+            <button onclick="switchTab('tienda')" id="nav-tienda" class="nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 transition-all">
+                <i class="fa-solid fa-store text-lg"></i>
+                <span class="text-[10px]">Tienda</span>
+            </button>
+            <button onclick="switchTab('guia')" id="nav-guia" class="nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 transition-all">
+                <i class="fa-solid fa-book-open text-lg"></i>
+                <span class="text-[10px]">Guía</span>
+            </button>
+        </div>
+    </nav>
+
+
+    <!-- MODALS -->
+
+    <!-- Modal 1: Edit Task XP & Title -->
+    <div id="editTaskModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-cardBorder rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-base">Editar Misión</h3>
+                <button onclick="closeModal('editTaskModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <input type="hidden" id="editTaskId">
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Título de la Misión</label>
+                    <input type="text" id="editTaskTitle" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">XP Otorgado por esta misión</label>
+                    <input type="number" id="editTaskXP" min="5" max="500" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveTaskEdit()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all">
+                    Guardar Cambios
+                </button>
+                <button onclick="closeModal('editTaskModal')" class="bg-darkBg border border-cardBorder text-slate-300 font-medium px-4 py-2.5 rounded-xl text-xs">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Add New Task -->
+    <div id="addTaskModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-cardBorder rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-base">Crear Nueva Misión</h3>
+                <button onclick="closeModal('addTaskModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Categoría / Habilidad</label>
+                    <select id="newTaskCategory" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                        <option value="Salud">💚 Salud</option>
+                        <option value="Mentalidad">🧠 Mentalidad</option>
+                        <option value="Relaciones">🤝 Relaciones</option>
+                        <option value="Propósito">🎯 Propósito</option>
+                        <option value="Trading">📈 Trading</option>
+                        <option value="Disciplina">⚡ Disciplina</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Nombre de la Tarea</label>
+                    <input type="text" id="newTaskTitle" placeholder="Ej. Meditar 15 minutos" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">XP Recompensa</label>
+                    <input type="number" id="newTaskXP" value="10" min="5" max="500" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="createNewTask()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all">
+                    Agregar Misión
+                </button>
+                <button onclick="closeModal('addTaskModal')" class="bg-darkBg border border-cardBorder text-slate-300 font-medium px-4 py-2.5 rounded-xl text-xs">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Add Reward -->
+    <div id="addRewardModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-cardBorder rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-base">Crear Recompensa</h3>
+                <button onclick="closeModal('addRewardModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Nombre de la Recompensa</label>
+                    <input type="text" id="newRewardTitle" placeholder="Ej. Ver 1 película sin culpa" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Costo en Monedas</label>
+                    <input type="number" id="newRewardCost" value="15" min="1" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Ícono</label>
+                    <select id="newRewardIcon" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+                        <option value="fa-film">🎬 Película / Serie</option>
+                        <option value="fa-gamepad">🎮 Videojuego</option>
+                        <option value="fa-cookie-bite">🍪 Postre / Gusto</option>
+                        <option value="fa-mug-hot">☕ Tiempo de Relax</option>
+                        <option value="fa-gift">🎁 Regalo Especial</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="createNewReward()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all">
+                    Guardar Recompensa
+                </button>
+                <button onclick="closeModal('addRewardModal')" class="bg-darkBg border border-cardBorder text-slate-300 font-medium px-4 py-2.5 rounded-xl text-xs">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Reset Confirm Modal -->
+    <div id="resetConfirmModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-cardBorder rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-white text-base">Opciones de Reinicio</h3>
+            <p class="text-xs text-slate-400">Selecciona qué deseas reiniciar:</p>
+            
+            <div class="space-y-2 pt-1">
+                <button onclick="resetDailyMissions()" class="w-full bg-darkBg hover:bg-slate-800 border border-cardBorder text-amber-300 font-medium p-3 rounded-xl text-xs text-left flex items-center justify-between">
+                    <span>Reiniciar Estado Diario de Misiones</span>
+                    <i class="fa-solid fa-calendar-day"></i>
+                </button>
+                <button onclick="resetAllData()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-medium p-3 rounded-xl text-xs text-left flex items-center justify-between">
+                    <span>Restablecer Todo de Fábrica</span>
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <button onclick="closeModal('resetConfirmModal')" class="w-full bg-cardBg border border-cardBorder text-slate-300 font-medium py-2 rounded-xl text-xs mt-2">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <script>
+        // Category Definitions matching user's image styling (💚, 🧠, 🤝, etc.)
+        const CATEGORIES = {
+            'Salud': { emoji: '💚', icon: 'fa-heart', color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/10' },
+            'Mentalidad': { emoji: '🧠', icon: 'fa-brain', color: 'text-purple-400', border: 'border-purple-500/20', bg: 'bg-purple-500/10' },
+            'Relaciones': { emoji: '🤝', icon: 'fa-handshake', color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/10' },
+            'Propósito': { emoji: '🎯', icon: 'fa-bullseye', color: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/10' },
+            'Trading': { emoji: '📈', icon: 'fa-chart-line', color: 'text-cyan-400', border: 'border-cyan-500/20', bg: 'bg-cyan-500/10' },
+            'Disciplina': { emoji: '⚡', icon: 'fa-bolt', color: 'text-yellow-400', border: 'border-yellow-500/20', bg: 'bg-yellow-500/10' }
+        };
+
+        // Tasks preloaded as requested in the screenshot
+        const DEFAULT_TASKS = [
+            // Salud
+            { id: 't1', category: 'Salud', title: 'Rutina de higiene y cuidado personal (Aseo, dientes, protector solar)', xp: 10, completed: false },
+            { id: 't2', category: 'Salud', title: 'Actividad física o estiramientos (20-30 min)', xp: 10, completed: false },
+            { id: 't3', category: 'Salud', title: 'Hidratación adecuada (2L de agua)', xp: 10, completed: false },
+            
+            // Mentalidad
+            { id: 't4', category: 'Mentalidad', title: 'Lectura de desarrollo personal o técnica (10 págs)', xp: 10, completed: false },
+            { id: 't5', category: 'Mentalidad', title: 'Meditación, respiración o planificación diaria (5-10 min)', xp: 10, completed: false },
+            { id: 't6', category: 'Mentalidad', title: 'Registro de gratitud o reflexión nocturna', xp: 10, completed: false },
+
+            // Relaciones
+            { id: 't7', category: 'Relaciones', title: 'Tiempo de calidad o conversación sin distracciones', xp: 10, completed: false },
+            { id: 't8', category: 'Relaciones', title: 'Mensaje o gesto de aprecio hacia una persona cercana', xp: 10, completed: false },
+
+            // Propósito
+            { id: 't9', category: 'Propósito', title: 'Avanzar en objetivo principal o proyecto (45-60 min)', xp: 10, completed: false },
+            { id: 't10', category: 'Propósito', title: 'Aprender algo nuevo alineado a tu visión', xp: 10, completed: false },
+
+            // Trading
+            { id: 't11', category: 'Trading', title: 'Revisión de mercado y backtesting estructurado', xp: 10, completed: false },
+            { id: 't12', category: 'Trading', title: 'Registrar trades y emociones en la bitácora', xp: 10, completed: false },
+
+            // Disciplina
+            { id: 't13', category: 'Disciplina', title: 'Cumplir el horario establecido sin posponer alarmas', xp: 10, completed: false },
+            { id: 't14', category: 'Disciplina', title: 'Mantener hábitos de orden y limpieza en tu espacio', xp: 10, completed: false }
+        ];
+
+        const DEFAULT_REWARDS = [
+            { id: 'r1', title: 'Ver 1 Película / Serie sin culpa', cost: 15, icon: 'fa-film' },
+            { id: 'r2', title: 'Comer postre o comida favorita', cost: 20, icon: 'fa-cookie-bite' },
+            { id: 'r3', title: '1 Hora de videojuegos / hobby libre', cost: 25, icon: 'fa-gamepad' },
+            { id: 'r4', title: 'Tarde libre de estudio/trabajo', cost: 50, icon: 'fa-mug-hot' }
+        ];
+
+        let appState = {
+            tasks: [],
+            rewards: [],
+            coins: 0,
+            streakDays: 0,
+            lastActiveDate: null,
+            lastCompletedDate: null,
+            dailyHistory: {}, // { "2026-10-29": { totalTasks: 14, completedTasks: 5, xpEarned: 50 } }
+            categoryXP: {
+                Salud: 0,
+                Mentalidad: 0,
+                Relaciones: 0,
+                Propósito: 0,
+                Trading: 0,
+                Disciplina: 0
+            }
+        };
+
+        let calendarCurrentDate = new Date();
+        let weeklyChartInstance = null;
+        let categoryChartInstance = null;
+
+        window.onload = function() {
+            initStorage();
+            checkAndHandleNewDay();
+            renderAll();
+        };
+
+        function initStorage() {
+            const savedData = localStorage.getItem('warriors_habit_data');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    appState = {
+                        tasks: parsed.tasks && parsed.tasks.length ? parsed.tasks : [...DEFAULT_TASKS],
+                        rewards: parsed.rewards && parsed.rewards.length ? parsed.rewards : [...DEFAULT_REWARDS],
+                        coins: typeof parsed.coins === 'number' ? parsed.coins : 0,
+                        streakDays: typeof parsed.streakDays === 'number' ? parsed.streakDays : 0,
+                        lastActiveDate: parsed.lastActiveDate || null,
+                        lastCompletedDate: parsed.lastCompletedDate || null,
+                        dailyHistory: parsed.dailyHistory || {},
+                        categoryXP: parsed.categoryXP || {
+                            Salud: 0, Mentalidad: 0, Relaciones: 0, Propósito: 0, Trading: 0, Disciplina: 0
+                        }
+                    };
+
+                    // Garantizar estructura de categorías de XP
+                    Object.keys(CATEGORIES).forEach(cat => {
+                        if (appState.categoryXP[cat] === undefined) appState.categoryXP[cat] = 0;
+                    });
+                } catch (e) {
+                    console.error("Error al cargar localStorage, restaurando valores:", e);
+                    loadDefaults();
+                }
+            } else {
+                loadDefaults();
+            }
+        }
+
+        function checkAndHandleNewDay() {
+            const todayKey = getTodayKey();
+
+            // Si es un día nuevo, resetear el estado de completado diario de las misiones
+            if (appState.lastActiveDate && appState.lastActiveDate !== todayKey) {
+                appState.tasks.forEach(task => {
+                    task.completed = false;
+                });
+            }
+
+            appState.lastActiveDate = todayKey;
+            recordTodayHistory();
+            saveState();
+        }
+
+        function loadDefaults() {
+            appState = {
+                tasks: JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+                rewards: JSON.parse(JSON.stringify(DEFAULT_REWARDS)),
+                coins: 0,
+                streakDays: 0,
+                lastActiveDate: getTodayKey(),
+                lastCompletedDate: null,
+                dailyHistory: {},
+                categoryXP: {
+                    Salud: 0,
+                    Mentalidad: 0,
+                    Relaciones: 0,
+                    Propósito: 0,
+                    Trading: 0,
+                    Disciplina: 0
+                }
+            };
+            recordTodayHistory();
+            saveState();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('warriors_habit_data', JSON.stringify(appState));
+            } catch (e) {
+                console.error("Error al guardar en localStorage:", e);
+            }
+        }
+
+        function getTodayKey() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        // Render Functions
+        function renderAll() {
+            renderHeaderAndPanel();
+            renderGroupedTasks();
+            renderSkills();
+            renderRewards();
+            renderCalendar();
+            renderCharts();
+        }
+
+        function getTotalXP() {
+            return Object.values(appState.categoryXP).reduce((acc, curr) => acc + curr, 0);
+        }
+
+        function getGlobalLevel() {
+            return Math.floor(getTotalXP() / 500) + 1;
+        }
+
+        function renderHeaderAndPanel() {
+            const totalXP = getTotalXP();
+            const globalLevel = getGlobalLevel();
+            const progressXP = totalXP % 500;
+            const progressPercent = (progressXP / 500) * 100;
+
+            document.getElementById('headerGlobalLevel').innerText = `Lv.${globalLevel}`;
+            document.getElementById('headerCoins').innerText = appState.coins;
+            document.getElementById('streakDaysCount').innerText = appState.streakDays;
+
+            document.getElementById('panelGlobalLevel').innerText = globalLevel;
+            document.getElementById('panelTotalXP').innerText = totalXP;
+            document.getElementById('panelGlobalProgressText').innerText = `${progressXP} / 500 XP`;
+            document.getElementById('panelGlobalProgressBar').style.width = `${progressPercent}%`;
+        }
+
+        // RENDER GROUPED TASKS
+        function renderGroupedTasks() {
+            const container = document.getElementById('groupedTasksContainer');
+            container.innerHTML = '';
+
+            Object.keys(CATEGORIES).forEach(catName => {
+                const catMeta = CATEGORIES[catName];
+                const categoryTasks = appState.tasks.filter(t => t.category === catName);
+
+                let xpBadgeText = '+10 XP por misión';
+                if (categoryTasks.length > 0) {
+                    const firstXP = categoryTasks[0].xp;
+                    const allSame = categoryTasks.every(t => t.xp === firstXP);
+                    xpBadgeText = allSame ? `+${firstXP} XP por misión` : `+XP variable`;
+                }
+
+                const catCard = document.createElement('div');
+                catCard.className = 'bg-cardBg border border-cardBorder rounded-2xl p-4 sm:p-5 space-y-3 shadow-lg';
+
+                let tasksHTML = '';
+                if (categoryTasks.length === 0) {
+                    tasksHTML = `<p class="text-xs text-slate-500 italic py-2">No hay misiones creadas en esta categoría.</p>`;
+                } else {
+                    categoryTasks.forEach(task => {
+                        tasksHTML += `
+                            <div class="bg-darkBg/90 border border-cardBorder/80 hover:border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3 transition-all">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <input type="checkbox" 
+                                           class="task-checkbox shrink-0" 
+                                           ${task.completed ? 'checked' : ''} 
+                                           onchange="toggleTask('${task.id}')">
+                                    <span class="text-xs sm:text-sm font-medium ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'} leading-snug">
+                                        ${task.title}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="text-[10px] font-bold text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                                        +${task.xp} XP
+                                    </span>
+                                    <button onclick="openEditTaskModal('${task.id}')" class="text-slate-500 hover:text-amber-400 p-1" title="Editar Tarea">
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteTask('${task.id}')" class="text-slate-500 hover:text-red-400 p-1" title="Eliminar Tarea">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                catCard.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">${catMeta.emoji}</span>
+                            <h3 class="text-base font-bold text-white tracking-wide">${catName}</h3>
+                        </div>
+                        <span class="text-[11px] font-medium text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1 rounded-full">
+                            ${xpBadgeText}
+                        </span>
+                    </div>
+
+                    <div class="space-y-2.5 pt-1">
+                        ${tasksHTML}
+                    </div>
+
+                    <div class="pt-1">
+                        <button onclick="quickAddTask('${catName}')" class="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Añadir tarea a ${catName}
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(catCard);
+            });
+        }
+
+        function quickAddTask(category) {
+            document.getElementById('newTaskCategory').value = category;
+            openModal('addTaskModal');
+        }
+
+        function toggleTask(id) {
+            const task = appState.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            task.completed = !task.completed;
+
+            if (task.completed) {
+                appState.categoryXP[task.category] = (appState.categoryXP[task.category] || 0) + task.xp;
+                appState.coins += Math.floor(task.xp / 10);
+                updateStreak();
+            } else {
+                appState.categoryXP[task.category] = Math.max(0, (appState.categoryXP[task.category] || 0) - task.xp);
+                appState.coins = Math.max(0, appState.coins - Math.floor(task.xp / 10));
+            }
+
+            // Guardar captura del día
+            recordTodayHistory();
+            saveState();
+            renderAll();
+        }
+
+        function recordTodayHistory() {
+            const todayKey = getTodayKey();
+            const totalTasks = appState.tasks.length;
+            const completedTasks = appState.tasks.filter(t => t.completed).length;
+            const xpEarned = appState.tasks.filter(t => t.completed).reduce((sum, t) => sum + t.xp, 0);
+
+            appState.dailyHistory[todayKey] = {
+                totalTasks,
+                completedTasks,
+                xpEarned
+            };
+        }
+
+        function updateStreak() {
+            const today = getTodayKey();
+            if (appState.lastCompletedDate !== today) {
+                appState.streakDays += 1;
+                appState.lastCompletedDate = today;
+            }
+        }
+
+        function renderSkills() {
+            const container = document.getElementById('skillsDetailList');
+            container.innerHTML = '';
+
+            Object.keys(CATEGORIES).forEach(catName => {
+                const xp = appState.categoryXP[catName] || 0;
+                const level = Math.floor(xp / 100) + 1;
+                const currentLevelXP = xp % 100;
+                const catMeta = CATEGORIES[catName];
+
+                const card = document.createElement('div');
+                card.className = `bg-cardBg border ${catMeta.border} p-4 rounded-2xl space-y-3`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">${catMeta.emoji}</span>
+                            <div>
+                                <h3 class="font-bold text-sm text-white">${catName}</h3>
+                                <p class="text-[10px] text-slate-400">${xp} XP Acumulados</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-display font-extrabold text-amber-400">Nivel ${level}</span>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] text-slate-400">
+                            <span>Progreso Nivel ${level}</span>
+                            <span>${currentLevelXP} / 100 XP</span>
+                        </div>
+                        <div class="w-full h-2 bg-darkBg rounded-full overflow-hidden p-0.5 border border-slate-800">
+                            <div class="h-full bg-gradient-to-r from-amber-500 to-purple-500 rounded-full" style="width: ${currentLevelXP}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderRewards() {
+            document.getElementById('storeCoinsDisplay').innerText = `${appState.coins} Monedas`;
+            const container = document.getElementById('rewardsGrid');
+            container.innerHTML = '';
+
+            appState.rewards.forEach(reward => {
+                const canAfford = appState.coins >= reward.cost;
+                const card = document.createElement('div');
+                card.className = `bg-cardBg border border-cardBorder p-4 rounded-2xl flex flex-col justify-between space-y-3`;
+                
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                                <i class="fa-solid ${reward.icon || 'fa-gift'} text-sm"></i>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-200">${reward.title}</h4>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-cardBorder">
+                        <span class="font-display font-extrabold text-xs text-amber-400 flex items-center gap-1">
+                            <i class="fa-solid fa-coins"></i> ${reward.cost} Monedas
+                        </span>
+                        <button onclick="redeemReward('${reward.id}')" ${!canAfford ? 'disabled' : ''} class="${canAfford ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-500 cursor-not-allowed'} font-bold px-3 py-1.5 rounded-xl text-xs transition-all">
+                            Canjear
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // MONTHLY CALENDAR RENDERING
+        function renderCalendar() {
+            const year = calendarCurrentDate.getFullYear();
+            const month = calendarCurrentDate.getMonth();
+
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            document.getElementById('calendarMonthLabel').innerText = `${monthNames[month]} ${year}`;
+
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            const adjustedFirstDay = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
+
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = 'h-8 rounded-lg bg-transparent';
+                grid.appendChild(emptySlot);
+            }
+
+            const todayKey = getTodayKey();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const history = appState.dailyHistory[dayKey];
+
+                let bgClass = 'bg-darkBg/60 border-cardBorder text-slate-400';
+                if (history && history.totalTasks > 0) {
+                    const ratio = history.completedTasks / history.totalTasks;
+                    if (ratio >= 1.0) bgClass = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold';
+                    else if (ratio > 0) bgClass = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
+                }
+
+                const isToday = dayKey === todayKey;
+                const cell = document.createElement('div');
+                cell.className = `h-8 border rounded-lg flex items-center justify-center text-xs transition-all relative ${bgClass} ${isToday ? 'ring-2 ring-amber-400' : ''}`;
+                cell.innerHTML = `
+                    <span>${day}</span>
+                    ${history && history.completedTasks > 0 ? `<span class="absolute bottom-0.5 w-1 h-1 rounded-full bg-emerald-400"></span>` : ''}
+                `;
+                cell.title = history ? `${history.completedTasks}/${history.totalTasks} completadas` : 'Sin datos';
+                grid.appendChild(cell);
+            }
+        }
+
+        function changeMonth(delta) {
+            calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        // CHARTS RENDERING (WEEKLY & CATEGORY)
+        function renderCharts() {
+            const daysLabels = [];
+            const completionRates = [];
+
+            let totalWeekCompleted = 0;
+            let totalWeekTasks = 0;
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const label = d.toLocaleDateString('es-ES', { weekday: 'short' });
+                daysLabels.push(label.charAt(0).toUpperCase() + label.slice(1));
+
+                const hist = appState.dailyHistory[key];
+                if (hist && hist.totalTasks > 0) {
+                    const pct = Math.round((hist.completedTasks / hist.totalTasks) * 100);
+                    completionRates.push(pct);
+                    totalWeekCompleted += hist.completedTasks;
+                    totalWeekTasks += hist.totalTasks;
+                } else if (key === getTodayKey()) {
+                    const total = appState.tasks.length;
+                    const comp = appState.tasks.filter(t => t.completed).length;
+                    const pct = total > 0 ? Math.round((comp / total) * 100) : 0;
+                    completionRates.push(pct);
+                    totalWeekCompleted += comp;
+                    totalWeekTasks += total;
+                } else {
+                    completionRates.push(0);
+                }
+            }
+
+            const overallRate = totalWeekTasks > 0 ? Math.round((totalWeekCompleted / totalWeekTasks) * 100) : 0;
+            document.getElementById('weeklyCompletionRate').innerText = `${overallRate}% Promedio`;
+
+            const ctxWeekly = document.getElementById('weeklyChart').getContext('2d');
+            if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+            weeklyChartInstance = new Chart(ctxWeekly, {
+                type: 'bar',
+                data: {
+                    labels: daysLabels,
+                    datasets: [{
+                        data: completionRates,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { min: 0, max: 100, ticks: { color: '#6b7280', font: { size: 9 } }, grid: { color: '#1f2937' } },
+                        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+
+            const catLabels = Object.keys(CATEGORIES);
+            const catValues = catLabels.map(cat => appState.categoryXP[cat] || 0);
+
+            const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catValues.some(v => v > 0) ? catValues : [1,1,1,1,1,1],
+                        backgroundColor: ['#10b981', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4', '#eab308'],
+                        borderWidth: 2,
+                        borderColor: '#131824'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 10 } }
+                    }
+                }
+            });
+        }
+
+        // Modal Action Helpers
+        function openEditTaskModal(id) {
+            const task = appState.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById('editTaskId').value = task.id;
+            document.getElementById('editTaskTitle').value = task.title;
+            document.getElementById('editTaskXP').value = task.xp;
+
+            openModal('editTaskModal');
+        }
+
+        function saveTaskEdit() {
+            const id = document.getElementById('editTaskId').value;
+            const title = document.getElementById('editTaskTitle').value.trim();
+            const xp = parseInt(document.getElementById('editTaskXP').value) || 10;
+
+            const task = appState.tasks.find(t => t.id === id);
+            if (task && title) {
+                task.title = title;
+                task.xp = xp;
+                saveState();
+                renderAll();
+                closeModal('editTaskModal');
+            }
+        }
+
+        function deleteTask(id) {
+            appState.tasks = appState.tasks.filter(t => t.id !== id);
+            recordTodayHistory();
+            saveState();
+            renderAll();
+        }
+
+        function createNewTask() {
+            const category = document.getElementById('newTaskCategory').value;
+            const title = document.getElementById('newTaskTitle').value.trim();
+            const xp = parseInt(document.getElementById('newTaskXP').value) || 10;
+
+            if (!title) return;
+
+            const newTask = {
+                id: 't_' + Date.now(),
+                category: category,
+                title: title,
+                xp: xp,
+                completed: false
+            };
+
+            appState.tasks.push(newTask);
+            recordTodayHistory();
+            saveState();
+            renderAll();
+            closeModal('addTaskModal');
+            document.getElementById('newTaskTitle').value = '';
+        }
+
+        function createNewReward() {
+            const title = document.getElementById('newRewardTitle').value.trim();
+            const cost = parseInt(document.getElementById('newRewardCost').value) || 15;
+            const icon = document.getElementById('newRewardIcon').value;
+
+            if (!title) return;
+
+            appState.rewards.push({ id: 'r_' + Date.now(), title, cost, icon });
+            saveState();
+            renderRewards();
+            closeModal('addRewardModal');
+            document.getElementById('newRewardTitle').value = '';
+        }
+
+        function redeemReward(id) {
+            const reward = appState.rewards.find(r => r.id === id);
+            if (reward && appState.coins >= reward.cost) {
+                appState.coins -= reward.cost;
+                saveState();
+                renderAll();
+            }
+        }
+
+        function resetDailyMissions() {
+            appState.tasks.forEach(t => t.completed = false);
+            recordTodayHistory();
+            saveState();
+            renderAll();
+            closeModal('resetConfirmModal');
+        }
+
+        function resetAllData() {
+            localStorage.removeItem('warriors_habit_data');
+            loadDefaults();
+            renderAll();
+            closeModal('resetConfirmModal');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-amber-400', 'font-bold');
+                btn.classList.add('text-slate-400');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            activeBtn.classList.add('text-amber-400', 'font-bold');
+            activeBtn.classList.remove('text-slate-400');
+
+            if (tabName === 'panel') renderCharts();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    </script>
+</body>
+</html>
